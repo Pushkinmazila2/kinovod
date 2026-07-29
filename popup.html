@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 350px;
+      font-family: Arial, sans-serif;
+      margin: 10px;
+      background-color: #1e1e1e;
+      color: #fff;
+    }
+    h3 {
+      border-bottom: 1px solid #444;
+      padding-bottom: 8px;
+      margin-top: 0;
+    }
+    .movie-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #333;
+    }
+    .movie-info {
+      max-width: 70%;
+    }
+    .movie-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #00adb5;
+      text-decoration: none;
+    }
+    .movie-meta {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 3px;
+    }
+    .badge {
+      background-color: #ff5722;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .btn-clear {
+      width: 100%;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      padding: 6px;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btn-clear:hover { background-color: #444; }
+  </style>
+</head>
+<body>
+  <h3>Отслеживаемые сериалы</h3>
+  <div id="list">Загрузка...</div>
+  <button id="clear-all" class="btn-clear">Сбросить все маркеры "Новое"</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>
