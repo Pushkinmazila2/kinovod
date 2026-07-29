@@ -216,7 +216,10 @@ def my_parser_loop():
                                 except ValueError: continue
                         if pages: total_pages = max(pages)
                     
-                    pages_to_parse = min(2, total_pages) 
+                        if PAGES_TO_PARSE == 0:
+                            pages_to_parse = total_pages
+                        else:
+                            pages_to_parse = min(PAGES_TO_PARSE, total_pages) 
                     
                     for page_num in range(1, pages_to_parse + 1):
                         page_url = f"{BASE_URL}{category}?page={page_num}"
