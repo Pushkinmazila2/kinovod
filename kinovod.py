@@ -23,7 +23,7 @@ DB_CONFIG = {
 }
 
 PASSWORD = os.environ.get("SITE_PASSWORD")
-PAGES_TO_PARSE = 5
+PAGES_TO_PARSE = 2
 
 PARSER_STATUS = {
     "status": "Инициализация",
