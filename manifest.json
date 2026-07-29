@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Kinovod Update Tracker",
+  "version": "1.0",
+  "description": "Отслеживает обновление серий и качества на Киноводе",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.xyz/*",
+    "https://*.cc/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
