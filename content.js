@@ -1,7 +1,9 @@
-// Функция сбора данных со страницы
 function scanFavoriteList() {
   const items = document.querySelectorAll('li.item');
   const scannedMovies = {};
+  
+  // Автоматически определяем текущий рабочий домен (протокол + имя сайта)
+  const currentDomain = window.location.origin; 
 
   items.forEach(item => {
     const favButton = item.querySelector('button.favorite');
@@ -15,7 +17,7 @@ function scanFavoriteList() {
     const title = titleEl ? titleEl.textContent.trim() : 'Без названия';
     const url = titleEl ? titleEl.getAttribute('href') : '#';
     const currentLabel = labelEl ? labelEl.textContent.trim() : 'Фильм / Вышел';
-    const quality = yearEl ? yearEl.textContent.trim().split(', ')[1] || 'Неизвестно' : 'Неизвестно';
+    const quality = yearEl ? yearEl.textContent.trim() : 'Неизвестно';
 
     scannedMovies[movieId] = {
       id: movieId,
@@ -27,32 +29,29 @@ function scanFavoriteList() {
     };
   });
 
-  // Сравниваем со старыми данными в базе и обновляем ее
+  // Сохраняем фильмы И актуальный рабочий домен в базу данных
   chrome.storage.local.get({ trackedMovies: {} }, (result) => {
     const oldMovies = result.trackedMovies;
-    let hasUpdates = false;
 
     for (let id in scannedMovies) {
-      // Если этот фильм уже был в базе, проверяем, изменилась ли серия или качество
       if (oldMovies[id]) {
         if (oldMovies[id].lastLabel !== scannedMovies[id].lastLabel || oldMovies[id].quality !== scannedMovies[id].quality) {
-          console.log(`Обновление найдено для: ${scannedMovies[id].title}`);
-          scannedMovies[id].isNewUpdate = true; // Ставим маркер "Новое!"
-          hasUpdates = true;
+          scannedMovies[id].isNewUpdate = true;
         } else {
-          // Сохраняем маркер новизны, если пользователь его еще не сбросил
           scannedMovies[id].isNewUpdate = oldMovies[id].isNewUpdate || false;
         }
       } else {
-        // Если фильма вообще не было в базе — это новое добавление
         scannedMovies[id].isNewUpdate = false;
       }
     }
 
-    // Записываем обновленный массив обратно в Chrome Storage
-    chrome.storage.local.set({ trackedMovies: { ...oldMovies, ...scannedMovies } });
+    // Записываем данные и обновляем текущий домен в хранилище
+    chrome.storage.local.set({ 
+      trackedMovies: { ...oldMovies, ...scannedMovies },
+      activeDomain: currentDomain 
+    });
   });
 }
 
-// Запускаем сканирование при загрузке страницы
-setTimeout(scanFavoriteList, 2000); 
+// Запуск сканирования
+setTimeout(scanFavoriteList, 2000);
