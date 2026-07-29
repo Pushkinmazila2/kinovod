@@ -1,19 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Kinovod Update Tracker",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Отслеживает обновление серий и качества на Киноводе",
   "permissions": [
     "storage",
     "notifications"
   ],
   "host_permissions": [
-    "https://rffg.knvd1.xyz/*"
+    "<all_urls>"
   ],
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": [
-        "https://rffg.knvd1.xyz/*"
+        "https://*/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"
