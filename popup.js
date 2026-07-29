@@ -2,14 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const listContainer = document.getElementById('list');
   const clearBtn = document.getElementById('clear-all');
 
-  // Читаем фильмы и сохраненный домен
+  // Читаем базу данных и берем сохраненный из настроек домен
   chrome.storage.local.get({ trackedMovies: {}, activeDomain: 'https://knvd1.xyz' }, (result) => {
     const movies = result.trackedMovies;
-    const domain = result.activeDomain; // Ипользуем динамический домен сайта
+    const domain = result.activeDomain; 
     const keys = Object.keys(movies);
 
     if (keys.length === 0) {
-      listContainer.innerHTML = '<p style="color:#aaa;">Список пуст. Зайдите на страницу вашего "Избранного" на Киноводе для сканирования.</p>';
+      listContainer.innerHTML = '<p style="color:#aaa;">Список пуст. Зайдите на страницу вашего "Избранного" на актуальном сайте для сканирования.</p>';
       return;
     }
 
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const updateBadge = movie.isNewUpdate ? '<span class="badge">NEW</span>' : '';
 
-      // Подставляем актуальный домен к ссылке
+      // Ссылка теперь собирается строго из настроек + относительный путь
       item.innerHTML = `
         <div class="movie-info">
           <a href="${domain}${movie.url}" target="_blank" class="movie-title">${movie.title}</a>
