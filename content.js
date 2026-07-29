@@ -1,9 +1,8 @@
 function scanFavoriteList() {
   const items = document.querySelectorAll('li.item');
+  if (items.length === 0) return; // Если мы не на странице со списками, ничего не делаем
+
   const scannedMovies = {};
-  
-  // Автоматически определяем текущий рабочий домен (протокол + имя сайта)
-  const currentDomain = window.location.origin; 
 
   items.forEach(item => {
     const favButton = item.querySelector('button.favorite');
@@ -29,7 +28,6 @@ function scanFavoriteList() {
     };
   });
 
-  // Сохраняем фильмы И актуальный рабочий домен в базу данных
   chrome.storage.local.get({ trackedMovies: {} }, (result) => {
     const oldMovies = result.trackedMovies;
 
@@ -45,13 +43,9 @@ function scanFavoriteList() {
       }
     }
 
-    // Записываем данные и обновляем текущий домен в хранилище
-    chrome.storage.local.set({ 
-      trackedMovies: { ...oldMovies, ...scannedMovies },
-      activeDomain: currentDomain 
-    });
+    chrome.storage.local.set({ trackedMovies: { ...oldMovies, ...scannedMovies } });
   });
 }
 
-// Запуск сканирования
+// Запуск сканирования через 2 секунды после полной загрузки
 setTimeout(scanFavoriteList, 2000);
