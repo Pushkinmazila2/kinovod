@@ -8,7 +8,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-BASE_URL = os.environ.get("SITE_HOST") ""
+BASE_URL = os.environ.get("SITE_HOST")
 CATEGORIES = ["/animation", "/tv", "/serials", "/films"]
 
 DB_CONFIG = {
