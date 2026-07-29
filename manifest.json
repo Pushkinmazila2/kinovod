@@ -4,11 +4,20 @@
   "version": "1.0",
   "description": "Отслеживает обновление серий и качества на Киноводе",
   "permissions": [
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
-    "https://*.xyz/*",
-    "https://*.cc/*"
+    "https://rffg.knvd1.xyz/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://rffg.knvd1.xyz/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
   ],
   "background": {
     "service_worker": "background.js"
