@@ -4,7 +4,10 @@ import time
 import random
 import urllib.parse
 import psycopg2
+import threading
 from datetime import datetime
+from fastapi import FastAPI
+import uvicorn
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
@@ -21,6 +24,16 @@ DB_CONFIG = {
 
 PASSWORD = os.environ.get("SITE_PASSWORD")
 PAGES_TO_PARSE = 2
+
+PARSER_STATUS = {
+    "status": "Инициализация",
+    "last_start": "Еще не запускался",
+    "current_category": "Нет",
+    "pages_parsed": 0,
+    "cards_saved": 0,
+    "last_error": "Нет"
+}
+
 
 def init_db():
     """Создает таблицу в PostgreSQL, если она не существует."""
@@ -136,14 +149,20 @@ def wait_delay():
     time.sleep(delay)
 
 def my_parser_loop():
-    """Ваш оригинальный парсер, который крутится в бесконечном цикле"""
+    """Ваш оригинальный парсер, который обновляет статус для веб-страницы"""
     while True:
         try:
+            # Обновляем статус перед началом работы
+            PARSER_STATUS["status"] = "В процессе парсинга"
+            PARSER_STATUS["last_start"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            PARSER_STATUS["current_category"] = "Инициализация базы данных"
+            PARSER_STATUS["pages_parsed"] = 0
+            PARSER_STATUS["cards_saved"] = 0
+            
             print("--- Запуск цикла парсинга по расписанию ---")
             init_db()
             
             with sync_playwright() as p:
-                # ВАЖНО: Добавили флаги оптимизации, чтобы уложиться в 512 МБ на Render
                 browser = p.chromium.launch(
                     headless=True,
                     args=[
@@ -159,31 +178,28 @@ def my_parser_loop():
                 )
                 page = context.new_page()
                 
-                print("1. Открываем страницу авторизации...")
+                PARSER_STATUS["current_category"] = "Авторизация на сайте"
                 page.goto(BASE_URL)
                 page.wait_for_load_state("networkidle")
                 
                 if page.locator("input[name='kv_auth_pwd']").count() > 0:
-                    print(" Форма найдена. Вводим пароль...")
                     page.fill("input[name='kv_auth_pwd']", PASSWORD)
                     wait_delay()
-                    
-                    print(" Нажимаем кнопку 'Войти'...")
                     page.click("button[type='submit']")
                     page.wait_for_load_state("networkidle")
                     wait_delay()
-                else:
-                    print("Форма авторизации не найдена.")
-                    
+                
                 if "Введите пароль" in page.content():
-                    print(" Ошибка: Не удалось авторизоваться. Проверьте пароль.")
+                    PARSER_STATUS["status"] = "Ошибка авторизации"
+                    PARSER_STATUS["last_error"] = "Неверный пароль от сайта"
                     browser.close()
+                    time.sleep(600)
                     continue
-                    
-                print(" Авторизация успешна! Начинаем сбор данных...")
                 
                 for category in CATEGORIES:
-                    print(f"\n--- Сканируем категорию: {category} ---")
+                    # Обновляем категорию в статусе
+                    PARSER_STATUS["current_category"] = f"Сканирование {category}"
+                    
                     page.goto(f"{BASE_URL}{category}?page=1")
                     page.wait_for_load_state("networkidle")
                     soup_init = BeautifulSoup(page.content(), "html.parser")
@@ -200,19 +216,16 @@ def my_parser_loop():
                                 except ValueError: continue
                         if pages: total_pages = max(pages)
                     
-                    print(f"Обнаружено страниц для сбора: {total_pages}")
                     pages_to_parse = min(2, total_pages) 
                     
                     for page_num in range(1, pages_to_parse + 1):
                         page_url = f"{BASE_URL}{category}?page={page_num}"
-                        print(f"Обработка страницы {page_num}/{pages_to_parse}: {page_url}")
                         
                         try:
                             page.goto(page_url)
                             page.wait_for_load_state("networkidle")
                             
                             if "Введите пароль" in page.content():
-                                print(f" Сессия сброшена на странице {page_num}. Остановка.")
                                 break
                                 
                             soup = BeautifulSoup(page.content(), "html.parser")
@@ -224,32 +237,43 @@ def my_parser_loop():
                                 if parsed_data:
                                     save_to_db(parsed_data)
                                     added_count += 1
-                            print(f" Успешно сохранено/обновлено карточек: {added_count}")
+                                    # Увеличиваем счетчик сохраненных карточек в реальном времени
+                                    PARSER_STATUS["cards_saved"] += 1
+                            
+                            # Увеличиваем счетчик обработанных страниц
+                            PARSER_STATUS["pages_parsed"] += 1
+                            
                         except Exception as e:
-                            print(f"Ошибка страницы {page_num}: {e}")
+                            PARSER_STATUS["last_error"] = f"Ошибка на странице {page_num}: {e}"
                 browser.close()
-        except Exception as big_e:
-            print(f"Критическая ошибка в потоке парсера: {big_e}")
+                
+            # Если всё прошло успешно, переводим в статус сна
+            PARSER_STATUS["status"] = "Спит (Ожидание следующего часа)"
+            PARSER_STATUS["current_category"] = "Нет"
             
-        print("Парсинг завершен. Засыпаем на 1 час...")
-        time.sleep(3600)  # Скрипт будет просыпаться каждый час
+        except Exception as big_e:
+            PARSER_STATUS["status"] = "Критическая ошибка"
+            PARSER_STATUS["last_error"] = str(big_e)
+            
+        time.sleep(3600) #Каждый час просыпаемся 
 
 
 
-import threading
-from fastapi import FastAPI
-import uvicorn
-
+# --- НАСТРОЙКА FASTAPI ДЛЯ ВЫВОДА ДАННЫХ ---
 app = FastAPI()
 
 @app.on_event("startup")
 def start_background_tasks():
-    # Запускаем парсер в отдельном независимом потоке
     threading.Thread(target=my_parser_loop, daemon=True).start()
 
 @app.get("/")
 def home():
-    return {"status": "Parser web-worker is alive"}
+    # Теперь при переходе по ссылке будет отдаваться актуальное состояние скрипта
+    return {
+        "info": "Мониторинг парсера Kinovod",
+        "current_time_server": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "parser_state": PARSER_STATUS
+    }
 
 if __name__ == "__main__":
     import os
