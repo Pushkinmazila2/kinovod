@@ -103,9 +103,13 @@ def save_to_db(data):
         print(f"Ошибка записи в базу данных: {e}")
 
 def parse_item(item_html):
-    """Парсит одну карточку контента."""
+    """
+    Универсальный парсер карточки контента.
+    Собирает качество из двух разных мест верстки и записывает в data["last_state"]
+    """
     data = {}
     
+    # 1. Собираем ссылку и тип контента
     link_element = item_html.select_one(".title a")
     if link_element and link_element.get("href"):
         relative_url = link_element.get("href")
@@ -113,6 +117,7 @@ def parse_item(item_html):
         url_parts = relative_url.strip("/").split("/")
         data["type"] = url_parts[0] if url_parts else "unknown"
     
+    # 2. Получаем уникальный ID фильма (если его нет, пропускаем карточку)
     fav_button = item_html.select_one("button.favorite")
     if fav_button and fav_button.get("data-movie-id"):
         data["kinovod_id"] = fav_button.get("data-movie-id")
@@ -122,20 +127,40 @@ def parse_item(item_html):
     if link_element:
         data["title"] = link_element.text.strip()
         
+    # 3. Собираем постер и рейтинг
     img_element = item_html.select_one(".poster img")
     if img_element and img_element.get("src"):
         data["poster"] = urllib.parse.urljoin(BASE_URL, img_element.get("src"))
         
-    label_element = item_html.select_one(".poster .label")
-    data["last_state"] = label_element.text.strip() if label_element else None
-    
     rating_element = item_html.select_one(".rating")
     data["rating"] = rating_element.text.strip() if rating_element else None
     
+    # 4. ЛОГИКА ДЛЯ КАЧЕСТВА (Данные одного смысла из разных мест)
+    detected_quality = None
+    
+    # Вариант А: Ищем плашку на самом постере (например, в Избранном) -> "Лицензия"
+    label_element = item_html.select_one(".poster .label")
+    if label_element:
+        detected_quality = label_element.text.strip()
+    
+    # Вариант Б: Разбираем строку года (в обычных категориях) -> "2026, TS"
     year_element = item_html.select_one(".year")
     if year_element:
         year_raw = year_element.text.strip()
-        data["year"] = year_raw.split(",")[0].strip() if "," in year_raw else year_raw
+        
+        if "," in year_raw:
+            parts = year_raw.split(",")
+            data["year"] = parts[0].strip()  # Сюда пойдет только чистый год ("2026")
+            
+            # Если Вариант А не нашел плашку, то забираем качество отсюда ("TS" или "HDRip")
+            if not detected_quality:
+                detected_quality = parts[1].strip()
+        else:
+            # Если запятой нет, то в теге указан только год
+            data["year"] = year_raw
+            
+    # Подменяем логически данные: пишем финальное найденное качество в ваше стандартное поле
+    data["last_state"] = detected_quality
             
     return data
 
